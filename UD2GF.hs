@@ -59,7 +59,7 @@ showUD2GF opts env sentence = do
   let devtree = combineTrees env devtree1
   ifOpt opts "dt" $ prLinesRTree (prDevNode 4) devtree
 
-  let besttree0 = head (splitDevTree devtree)
+  let besttree0 = head (splitDevTree env devtree)
   ifOpt opts "bt0" $ prLinesRTree (prDevNode 1) besttree0
 
   let besttree = addBackups besttree0
@@ -253,15 +253,18 @@ theAbsTreeInfo dt = case devAbsTrees (root dt) of
   _ -> error $ "no unique abstree in " ++ prDevNode 2 (root dt)
 
 -- split trees showing just one GF tree in each DevTree
-splitDevTree :: DevTree -> [DevTree]
-splitDevTree tr@(RTree dn trs) =
-  [RTree (dn{devAbsTrees = [t]}) (map (chase t) trs) | t <- devAbsTrees dn]
+splitDevTree :: UDEnv -> DevTree -> [DevTree]
+splitDevTree env tr@(RTree dn trs) =
+  [RTree (dn{devAbsTrees = [t]}) (map (chase t) trs) | t <- sortOn isStartCat $ devAbsTrees dn]
  where
   chase (ast,(cat,usage)) tr@(RTree d ts) = case elem (devIndex d) usage of
     True -> case sortOn ((1000-) . sizeRTree . fst) [dt | dt@(t,_) <- devAbsTrees d, isSubRTree t ast] of
       t:_ -> RTree (d{devAbsTrees = [t]}) (map (chase t) ts)
       _ -> error $ "wrong indexing in\n" ++ prLinesRTree (prDevNode 1) tr
-    False -> head $ splitDevTree $ RTree (d{devNeedBackup = True}) ts ---- head
+    False -> head $ splitDevTree env $ RTree (d{devNeedBackup = True}) ts ---- head
+
+  isStartCat :: AbsTreeInfo -> Bool
+  isStartCat (rt, (ci, uis)) = not $ startCategory env == mkType [] ci []
 
 prtStatus udids =  "[" ++ concat (intersperse "," (map prt udids)) ++ "]"
 
