@@ -247,13 +247,10 @@ type LabelledType = (Cat,[(Cat,(Label,[UDData]))])  -- UDData says that certain 
 
 mkLabelledType :: Type -> [String] -> LabelledType
 mkLabelledType typ labs = case unType typ of
-  (hypos,cat,_) -> (cat, zipWarn [valCat ty | (_,_,ty) <- hypos] (map labelAndMorpho labs))
+  (hypos,cat,_) -> (cat, zip [valCat ty | (_,_,ty) <- hypos] (map labelAndMorpho labs))
  where
   valCat ty = case unType ty of
     (_,cat,_) -> cat
-  zipWarn a b = (if length a /= length b
-    then trace ("Warning: wrong number of labels:\n\t" ++ showType [] typ ++ "\ndoes not match\n\t" ++ show labs)
-    else id) $ zip a b
 
 labelAndMorpho :: String -> (Label,[UDData])
 labelAndMorpho s = case break (=='[') s of  -- obj[Num=Sing]
