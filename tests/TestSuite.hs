@@ -1,11 +1,11 @@
 module Main where
 
+import Data.List (intercalate)
 import PGF
 import Test.Hspec
 import UD2GF
 import UDAnnotations
-import UDConcepts (UDData(UDData))
-import Data.List (intercalate)
+import UDConcepts (UDData (UDData))
 
 
 myUDEnv :: IO UDEnv
