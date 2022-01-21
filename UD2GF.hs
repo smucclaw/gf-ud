@@ -16,12 +16,12 @@ import qualified Data.Map as M
 import Data.Maybe
 import Text.PrettyPrint (cat, render)
 
-import Debug.Trace (trace, traceM)
+import Control.Applicative ((<|>))
+import Control.Monad (forM, forM_, unless, when)
+import Data.Either (partitionEithers)
 import Data.Function (on)
 import Data.Ord (comparing)
-import Control.Monad (unless, forM, when, forM_)
-import Control.Applicative ((<|>))
-import Data.Either (partitionEithers)
+import Debug.Trace (trace, traceM)
 
 ---------
 -- to debug
@@ -303,7 +303,7 @@ splitDevTree env tr@(RTree dn trs) =
    case elem (devIndex d) usage of
     True -> case sortOn ((1000-) . sizeRTree . atiAbsTree) [dt | dt@AbsTreeInfo { atiAbsTree = t} <- devAbsTrees d, isSubRTree t ast] of
       t:_ -> RTree (d{devAbsTrees = [t]}) (map (chase t) ts)
-      _ -> error $ "wrong indexing in\n" ++ prLinesRTree (prDevNode 1) tr
+      _   -> error $ "wrong indexing in\n" ++ prLinesRTree (prDevNode 1) tr
     False -> head $ splitDevTree env $ RTree (d{devNeedBackup = True}) ts ---- head
 
   isStartCat :: AbsTreeInfo -> Bool
@@ -343,7 +343,7 @@ debugAuxfun env dt funArg
 -- Check for successful int parse
 getInt :: [(Int, String)] -> Maybe Int
 getInt [(n,"")] = Just n
-getInt _ = Nothing
+getInt _        = Nothing
 
 data DbgArg = ArgIdx Int | ArgStr String
 
@@ -355,16 +355,16 @@ debugAuxFun' env dt funId argIds = either ("Error: " ++) id $ do
   traceM $ "\nStarting debug for " ++ showCId funId ++ ":"
   unless (M.notMember funId (disabledFunctions (cncLabels env))) $
     Left $ "The function " ++ showCId funId ++ " is disabled"
-  
+
   -- Allow arguments to be passed as words as an alternative to numbers
   let collectErrors :: [Either String a] -> Either String [a]
       collectErrors xs = case partitionEithers xs of
-        ([],xs) -> Right xs
+        ([],xs)  -> Right xs
         (errs,_) -> Left $ "Invalid arguments:\n - " ++ intercalate "\n - " errs
 
       showUDId :: UDId -> String
       showUDId (UDIdInt n ) = show n
-      showUDId x = show x
+      showUDId x            = show x
 
       getArg :: DbgArg -> Either String Int
       getArg (ArgIdx n) = Right n
@@ -372,14 +372,14 @@ debugAuxFun' env dt funId argIds = either ("Error: " ++) id $ do
         [] -> Left $ "Couldn't find word " ++ s
         [DevNode {devIndex=UDIdInt x}] -> Right x
         xs -> Left $ "Ambiguous word " ++ s ++ ". Found at " ++ intercalate ", " (map (showUDId . devIndex) xs)
-  
+
   argNrs <- collectErrors $ map getArg argIds
 
   let showAttrs [] = ""
       showAttrs xs = "[" ++ intercalate "," (map prt xs) ++ "]"
   let showFun outCat argCatLabs = show funId ++ " : " ++ intercalate " -> " (map (show . fst) argCatLabs) ++ " -> " ++ show outCat ++ " ; "
        ++ unwords ([ lab ++ showAttrs b | (_,(lab,b)) <- argCatLabs])
-  
+
   -- Find the function definition
   -- TODO: Merge this with the arg handling below
   (f,(outCat, argCatLabs)) <- case [(f,labtyp) | (f,labtyp) <- allFunsEnv env, f == funId] of
@@ -398,14 +398,14 @@ debugAuxFun' env dt funId argIds = either ("Error: " ++) id $ do
 
   -- Step 1. find where the head is in the tree
   headTree <- case findNode env (UDIdInt headNr) dt of
-    [] -> Left $ "Head node not found: " ++ show headNr
-    [rt] -> pure rt
+    []      -> Left $ "Head node not found: " ++ show headNr
+    [rt]    -> pure rt
     (_:_:_) -> Left $ "Multiple head nodes: " ++ show headNr
   let headNode = root headTree
 
   let showWord nr = case findNode env (UDIdInt nr) dt of [rt] -> show (devWord (root rt)); _ -> "<not found>"
   let showIdSimple (UDIdInt nr) = show nr
-      showIdSimple nr = show nr
+      showIdSimple nr           = show nr
 
   -- Step 2. Verify that all arguments are children of the head
   argNodes <- forM catLabNrs $ \(nr,catlab) -> case find ((== UDIdInt nr) . devIndex) ((headNode{devLabel=head_Label}): map root (subtrees headTree)) of
@@ -614,11 +614,15 @@ analyseWords env = mapRTree lemma2fun
   --- it is still possible that some other category is meant
   getWordTrees wf w cs = case concatMap (parseWord w) cs `ifEmpty` concatMap (parseWord (map toLower w)) cs `ifEmpty` morphoFallback wf of
     [] -> case cs of
-      [] -> (True,[(newWordTree w unknownCat, unknownCat)])
-      _  -> (True,[(newWordTree w ec, ec) | c <- cs, let ec = either id id c, strFunExists ec] 
+      [] -> (True,[(newWordTree wfLiteral unknownCat, unknownCat)])
+      _  -> (True,[(newWordTree wfLiteral ec, ec) | c <- cs, let ec = either id id c, strFunExists ec]
                    `ifEmpty` [(newWordTree w ec, ec) | c <- cs, let ec = either id id c])
-
     fs -> (False,fs)
+    where
+      isAllCaps = all isUpper
+      isSame str1 str2 = map toLower str1 == map toLower str2
+      wfLiteral = if isAllCaps wf && (isSame w wf) then wf else w
+
 
   -- | Return the first non-empty list
   ifEmpty [] xs = xs
