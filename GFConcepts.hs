@@ -1,8 +1,10 @@
 module GFConcepts where
 
+import Data.List
+import Debug.Trace (trace)
+import GHC.Stack (HasCallStack)
 import PGF
 import RTree
-import Data.List
 
 
 
@@ -19,11 +21,11 @@ prAbsTree = showExpr [] . abstree2expr
 
 pAbsTree s = case readExpr s of
   Just e -> expr2abstree e
-  _ -> error $ "cannot parse abstree " ++ s
+  _      -> error $ "cannot parse abstree " ++ s
 
 pAbsType s = case (filter (/="->") (words s)) of
   cs@(_:_) -> (mkCId (last cs), map mkCId (init cs))
-  _ -> error $ "cannot parse abstype " ++ s
+  _        -> error $ "cannot parse abstype " ++ s
 
 
 pgf2functions :: PGF -> [(Fun,AbsType)]
@@ -36,11 +38,17 @@ pgf2functions pgf = [(fun,(val,[arg | (_,_,ty) <- hs, let (_,arg,_) = unType ty]
 
 -- conversion from PGF to rose tree
 
-expr2abstree :: PGF.Expr -> AbsTree
-expr2abstree e = case unApp e of
-  Just (f,es) -> RTree f (map expr2abstree es)
-  -- _ | Just q <- unStr e -> RTree (mkCId "StrLit") [RTree (mkCId (show q)) []]
-  _ -> error ("ERROR: no constructor tree from " ++ showExpr [] e)
+expr2abstree :: HasCallStack => PGF.Expr -> AbsTree
+expr2abstree orig = -- (\res -> trace ("Converting: " ++ showExpr [] orig ++ " got " ++ show (length $ show res)) res) $
+                    go orig
+  where
+   go e = case unApp e of
+    Just (f,es) -> RTree f (map go es)
+    _ | Just q <- unStr e -> strLitToAbsTree q
+    _ -> error ("ERROR: no constructor tree from " ++ showExpr [] e ++ " in " ++ showExpr [] orig ++ "\nRaw: " ++ show e)
+
+strLitToAbsTree :: String -> AbsTree
+strLitToAbsTree w = RTree (mkCId (stringLiteralPrefix ++ w)) []
 
 abstree2expr :: AbsTree -> PGF.Expr
 abstree2expr tr@(RTree f []) | Just str <- asStringLiteral f = mkStr str
@@ -53,13 +61,13 @@ asStringLiteral f = stripPrefix stringLiteralPrefix $ unescape (showCId f)
 -- | showCId will escape non-valid literals, so we need to unescape them
 unescape :: String -> String
 unescape ('\'':str) = unescapeBackslashes str
-unescape str = str
+unescape str        = str
 
 unescapeBackslashes :: String -> String
 unescapeBackslashes ('\\':x:xs) = x : unescapeBackslashes xs
-unescapeBackslashes ['\''] = ""
-unescapeBackslashes (x:xs) = x : unescapeBackslashes xs
-unescapeBackslashes "" = error "missing final endquote"
+unescapeBackslashes ['\'']      = ""
+unescapeBackslashes (x:xs)      = x : unescapeBackslashes xs
+unescapeBackslashes ""          = error "missing final endquote"
 
 stringLiteralPrefix = "__strlit__"
 
@@ -91,7 +99,7 @@ partsOfFileName s = (path,abstr,lang,ext)
   where
     (path,file) = case break (=='/') s of
       (p,_:f) -> (p,f)
-      _ -> ("",s)
+      _       -> ("",s)
     (modul,_:ext) = break (=='.') file
     (abstr,lang) = splitAt (length modul - 3) modul
 
