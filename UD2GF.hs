@@ -21,7 +21,8 @@ import Control.Monad (forM, forM_, unless, when)
 import Data.Either (partitionEithers)
 import Data.Function (on)
 import Data.Ord (comparing)
-import Debug.Trace (trace, traceM)
+import qualified Data.Set as Set
+import Debug.Trace (trace, traceM, traceShowId)
 
 ---------
 -- to debug
@@ -513,11 +514,7 @@ combineTrees env =
   combineUnduplicated :: [FunInfo] -> DevTree -> DevTree
   combineUnduplicated finfos tree@(RTree dn ts)=
     RTree dn{
-      devAbsTrees = let
-                   newDevTrees = funInfoToAbsTreeInfo <$> finfos
-                   oldDevTrees = devAbsTrees dn
-                 in
-                   oldDevTrees ++ newDevTrees,
+      devAbsTrees = oldDevTrees ++ newDevTrees,
                                -- Newer suggestions are added to the end of the list, which prefers flatter trees.
                                -- Consider a tree like         A
                                --                                B
@@ -530,6 +527,11 @@ combineTrees env =
                                -- this choice, oldDevTrees++newDevTrees or newDevTrees++oldDevTrees determines the order of (i) and (ii).
       devStatus = maximumBy (comparing length) (devStatus dn : map funUsage finfos)
       } ts
+    where
+      --  traceWith x = trace (show $ fmap (prAbsTree . atiAbsTree) x) x
+        traceWith x = x
+        newDevTrees = traceWith $ funInfoToAbsTreeInfo <$> finfos
+        oldDevTrees = devAbsTrees dn
 
   allFunsLocalFast :: DevTree -> [FunInfo]
   allFunsLocalFast (RTree dn ts)=
@@ -545,7 +547,8 @@ combineTrees env =
          ],
 
     (f,labtyp) <- allFunsEnv env,
-    (abstree,usage) <- tryFindArgsFast f labtyp argalts
+    (abstree,usage) <- tryFindArgsFast f labtyp argalts,
+    not $ isLooping abstree
     ]
 
   -- NOTE: argss is transposed compared to tryFindArgs
@@ -596,6 +599,16 @@ combineTrees env =
     where
       dts = devAbsTrees dn
       result = filter ((`notElem` dts) . funInfoToAbsTreeInfo) fis
+
+isLooping :: AbsTree -> Bool
+isLooping = go Set.empty
+  where
+    go :: Set.Set Fun -> AbsTree -> Bool
+    go seen tr@(RTree fn [nxt])
+      | fn `Set.member` seen = trace ("Looping set: " ++ show (Set.toList seen) ++ " on " ++ take 100 (prAbsTree tr)) True
+      | otherwise = go (Set.insert fn seen) nxt
+    go seen (RTree fn _) = False
+    notrace x = id
 
 analyseWords :: UDEnv -> DevTree -> DevTree
 analyseWords env = mapRTree lemma2fun
