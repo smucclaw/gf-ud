@@ -152,7 +152,7 @@ pAbsLabels :: String -> AbsLabels
 pAbsLabels = dispatch . map words . uncomment . lines
  where
   dispatch = foldr add initAbsLabels
-  add ws labs = case ws of
+  add ws labs = traceShowId $ case ws of
     "#guidelines":w:_   -> labs{annotGuideline = Just w} --- overwrites earlier declaration
     "#fun":f:xs | elem ">" xs -> labs{funLabels = insertFunLabels (mkCId f) (map getMaybeFun fs, ls) (funLabels labs)} where (fs,_:ls) = break (==">") xs
     "#fun":f:xs         -> labs{funLabels = insertFunLabels (mkCId f) (unzip (map pFunLabel xs)) (funLabels labs)}
