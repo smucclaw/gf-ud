@@ -10,6 +10,7 @@ import Data.List
 import qualified Data.Map as M
 import Data.Maybe
 import qualified Data.Set as S
+import Debug.Trace (traceShowId)
 import System.FilePath.Posix (takeBaseName)
 
 data UDEnv = UDEnv {
@@ -72,7 +73,7 @@ data AbsLabels = AbsLabels {
   annotGuideline :: Maybe String,
   funLabels      :: M.Map CId [([Maybe CId], [Label])],
   catLabels      :: M.Map CId (String,Bool) -- True marks primary category in ud2gf
-  }
+  } deriving (Show)
 
 initAbsLabels :: AbsLabels
 initAbsLabels = AbsLabels (Just "UD2") M.empty M.empty
