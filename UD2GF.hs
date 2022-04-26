@@ -657,6 +657,29 @@ analyseWords env = mapRTree lemma2fun
       wfLiteral = if isAllCaps wf && isSame w wf then wf else w
 
 
+{-
+Handle compound words
+
+An example input:
+
+1       Sapiteed        sapi_tee        PROPN   S       Case=Par|Number=Sing    0       root    _       _
+2       tavalaiusega    tavalaius       NOUN    S       Case=Com|Number=Sing    1       nmod    _       _
+
+ud2gf should parse sapi_tee in the following order:
+
+a. Merge the lemma into sapitee and try to parse it. If it is found in the lexicon, return sapitee_N.
+b. If sapitee is not in the lexicon, then try parsing both sapi and tee. If they are both nouns, return CompoundN sapi_N tee_N.
+c. If only tee is found in the lexicon, return StrCompoundN "sapi" tee_N.
+d. If none of sapi or tee is in the lexicon, then proceed to morpho_analyze the wordform, i.e. "sapiteed". That's because the lemma may have been wrongly analysed.
+f. If ma "sapiteed"didn't return anything either, as a last resort we return StrN <something>. That something can be
+
+lemma without the underscore, so StrN "sapitee"
+wordform as is, so StrN "sapiteed".
+The same applies for compound adjectives, verbs etc. This assumes that the grammar has the backup functions StrC and StrCompoundC (which may become a command line option, see #24. But for now, when it's not command line option, we can just introduce those functions in ud2gf, and leave it to the grammarian to add them to grammar.)
+
+
+-}
+
   -- | Return the first non-empty list
   ifEmpty [] xs = xs
   ifEmpty xs _  = xs
