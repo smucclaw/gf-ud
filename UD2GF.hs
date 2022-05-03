@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module UD2GF where
 
 import Backend
@@ -20,6 +21,9 @@ import Text.PrettyPrint (cat, render)
 import Control.Applicative ((<|>))
 import Control.Monad (forM, forM_, unless, when)
 import Data.Either (partitionEithers)
+import Data.EnumSet (EnumSet)
+import qualified Data.EnumSet as EnumSet
+import Data.Foldable (fold)
 import Data.Function (on)
 import Data.Ord (comparing)
 import qualified Data.Set as Set
@@ -126,7 +130,7 @@ showUD2GF opts env sentence = do
 
   let allnodes = allNodesRTree besttree0
       orig = length allnodes
-      interp = length (devStatus (root besttree0))
+      interp = EnumSet.size (devStatus (root besttree0))
       stat = UD2GFStat {
        totalWords = orig,
        interpretedWords = interp,
@@ -201,9 +205,9 @@ checkAbsTreeResult env t = CheckResult {
 -- developing tree on the way from UD to GF
 type DevTree = RTree DevNode
 data DevNode = DevNode {
-  devStatus     :: [UDId],         -- indices of words used in the best abstree in DevTrees --- redundant
-  devWord       :: String,         -- the original word
-  devAbsTrees   :: [AbsTreeInfo],  -- trees constructed at this node, with types and used words
+  devStatus     :: EnumSet UDIntId, -- indices of words used in the best abstree in DevTrees --- redundant
+  devWord       :: String,          -- the original word
+  devAbsTrees   :: [AbsTreeInfo],   -- trees constructed at this node, with types and used words
   devLemma      :: String,
   devPOS        :: String,
   devFeats      :: [UDData],
@@ -221,7 +225,7 @@ mapDevAbsTree f dn = dn { devAbsTrees = map f (devAbsTrees dn) }
 data AbsTreeInfo = AbsTreeInfo
   { atiAbsTree :: AbsTree
   , atiCat     :: Cat
-  , atiUDIds   :: [UDId]
+  , atiUDIds   :: EnumSet UDIntId
   }
   deriving (Show, Eq)
 
@@ -265,7 +269,7 @@ addBackups0 tr@(RTree dn trs) = case map collectBackup (tr:trs) of  -- backups f
   -- add backups to tree, update usage with the nodes used in the backups (if no backups, do nothing)
   replaceInfo :: [(AbsTree,AbsTreeInfo)] -> AbsTreeInfo -> AbsTreeInfo
   replaceInfo btrs ai@(AbsTreeInfo ast cat usage ) =
-    AbsTreeInfo (replace btrs ast)  cat (sort (nub (concat (usage:map (atiUDIds . snd) btrs))))
+    AbsTreeInfo (replace btrs ast)  cat (usage <> foldMap (atiUDIds . snd) btrs)
 
   -- check if thre are backups; if not, apply backups to subtrees
   replace :: [(AbsTree,AbsTreeInfo)] -> AbsTree -> AbsTree
@@ -282,7 +286,7 @@ addBackups0 tr@(RTree dn trs) = case map collectBackup (tr:trs) of  -- backups f
   mkBackupList ai@AbsTreeInfo { atiAbsTree = ast, atiCat = cat, atiUDIds = usage} ts =
     case unzip [(mkBackup a c,us) | AbsTreeInfo { atiAbsTree = a, atiCat = c, atiUDIds = us} <- ts] of
       ([],_) -> Nothing
-      (bs,uss) -> Just AbsTreeInfo { atiAbsTree = foldr cons nil bs, atiCat = cat, atiUDIds = sort $ nub $ concat uss}
+      (bs,uss) -> Just AbsTreeInfo { atiAbsTree = foldr cons nil bs, atiCat = cat, atiUDIds = fold uss}
 
   cons t u = RTree (mkCId "ConsBackup") [t,u]
   nil = RTree (mkCId "BaseBackup") []
@@ -302,16 +306,16 @@ splitDevTree env tr@(RTree dn trs) =
   [RTree (dn{devAbsTrees = [t]}) (map (chase t) trs) | t <- sortOn isStartCat $ devAbsTrees dn]
  where
   chase AbsTreeInfo { atiAbsTree = ast, atiCat = cat, atiUDIds = usage} tr@(RTree d ts) =
-   case elem (devIndex d) usage of
-    True -> case sortOn ((1000-) . sizeRTree . atiAbsTree) [dt | dt@AbsTreeInfo { atiAbsTree = t} <- devAbsTrees d, isSubRTree t ast] of
+   if EnumSet.member (assertIntIndex $ devIndex d) usage
+    then case sortOn ((1000-) . sizeRTree . atiAbsTree) [dt | dt@AbsTreeInfo { atiAbsTree = t} <- devAbsTrees d, isSubRTree t ast] of
       t:_ -> RTree (d{devAbsTrees = [t]}) (map (chase t) ts)
       _   -> error $ "wrong indexing in\n" ++ prLinesRTree (prDevNode 1) tr
-    False -> head $ splitDevTree env $ RTree (d{devNeedBackup = True}) ts ---- head
+    else head $ splitDevTree env $ RTree (d{devNeedBackup = True}) ts ---- head
 
   isStartCat :: AbsTreeInfo -> Bool
   isStartCat AbsTreeInfo { atiAbsTree = rt, atiCat = ci, atiUDIds = uis} = startCategory env /= mkType [] ci []
 
-prtStatus udids =  "[" ++ concat (intersperse "," (map prt udids)) ++ "]"
+prtStatus udids =  "[" ++ intercalate "," (map (prt. udIntId2UdId) $ EnumSet.toList udids) ++ "]"
 
 
 -- order collected abstract trees by completeness; applied internally in combineTree at each node
@@ -319,7 +323,7 @@ rankDevTree :: DevTree -> DevTree
 rankDevTree tr@(RTree dn dts) = RTree dn{devAbsTrees = rankSort (devAbsTrees dn)} dts
  where
   rankSort = sortOn ((100-) . rank) -- descending order of rank
-  rank AbsTreeInfo { atiUDIds = us } = length us
+  rank AbsTreeInfo { atiUDIds = us } = EnumSet.size us
 
 -- omit (t2,(cat,usage2)) if there is (t1,(cat,usage1)) such that usage2 is a subset of usage1
 pruneDevTree :: DevTree -> DevTree
@@ -327,10 +331,10 @@ pruneDevTree  tr@(RTree dn dts) = RTree dn{devAbsTrees = pruneCatGroups (groupCa
  where
   cat = atiCat
   usage = atiUDIds
-  rank = length . usage
+  rank = EnumSet.size . usage
   groupCat = map (sortOn ((100-) . rank)) . groupBy (\x y -> cat x == cat y) . sortOn cat
   prune usages grp = case grp of
-    t:ts | any (\u -> all (\x -> elem x u) (usage t)) usages -> prune usages ts
+    t:ts | any (\u -> all (`EnumSet.member` u) (EnumSet.toList $ usage t)) usages -> prune usages ts
     t:ts -> t : prune (usage t : usages) ts
     _ -> grp
   pruneCatGroups = concatMap (prune [])
@@ -449,7 +453,7 @@ debugAuxFun' env dt funId argIds = either ("Error: " ++) id $ do
 
   -- 5: Check that the constructed tree exists in the dev-tree
   let headAT = devAbsTrees headNode
-  let matchingAbstrees = [ x | x <- headAT , root (atiAbsTree x) == f, all ((`elem` atiUDIds x) . UDIdInt) argNrs]
+  let matchingAbstrees = [ x | x <- headAT , root (atiAbsTree x) == f, all ((`EnumSet.member` atiUDIds x) . UDIntId) argNrs]
   let sameCategory = [ x | x <- headAT, atiCat x == outCat]
   when (null matchingAbstrees) $ Left $ "Can make tree, but tree not found in devtree. Found trees with same result category as "++ showCId f ++ ": " ++ intercalate "\n    " (map ((++ " : " ++ show outCat) . prRTree showCId . atiAbsTree) sameCategory)
   traceM $ "Trees using " ++ showCId f ++ " found in devtree:\n    " ++ intercalate "\n    " (map ((++ " : " ++ show outCat) . prRTree showCId . atiAbsTree) matchingAbstrees)
@@ -466,19 +470,29 @@ findNode env nr dt@(RTree dn rts)
   -- Steps:
 
 
+-- | Like UDId, but only the Int case, since that's the only well-behaved case
+newtype UDIntId = UDIntId Int
+  deriving (Eq,Ord,Show, Enum)
 
+-- | Assert that a UDId is an Int, crash otherwise
+assertIntIndex :: UDId -> UDIntId
+assertIntIndex (UDIdInt i) = UDIntId i
+assertIntIndex x           = error $ "assertIntIndex: Not an int id: " ++ show x
+
+udIntId2UdId :: UDIntId -> UDId
+udIntId2UdId (UDIntId i) = UDIdInt i
 
 -- function application to a given set of arguments when building up DevTree
 data FunInfo = FunInfo {
   funFun   :: Fun,            -- GF function
   funTyp   :: LabelledType,   -- its type with matching labels
   funTree  :: AbsTree,        -- tree that would be built with the available arguments
-  funUsage :: [UDId]          -- subtrees that are consumed as arguments
+  funUsage :: EnumSet UDIntId       -- subtrees that are consumed as arguments
   }
 
 data ArgInfo = ArgInfo {
   argNumber :: Int,           -- how manieth subtree
-  argUsage  :: [UDId],        -- what subtrees it consumes
+  argUsage  :: EnumSet UDIntId, -- what subtrees it consumes
   argCatLab :: (Cat,Label),   -- its type and the label of its head word
   argFeats  :: [UDData],      -- features of its head word
   argTree   :: AbsTree        -- the GF tree built at that node
@@ -527,7 +541,7 @@ combineTrees env =
                                -- Round 2: construct DeepFun, because now we have (SubFun A B).
                                -- The list of devtrees undergoes many reorderings throughout the program, but
                                -- this choice, oldDevTrees++newDevTrees or newDevTrees++oldDevTrees determines the order of (i) and (ii).
-      devStatus = maximumBy (comparing length) (devStatus dn : map funUsage finfos)
+      devStatus = maximumBy (comparing EnumSet.size) (devStatus dn : map funUsage finfos)
       } ts
     where
       --  traceWith x = trace (show $ fmap (prAbsTree . atiAbsTree) x) x
@@ -542,7 +556,7 @@ combineTrees env =
     -- argalts :: [[Arg]] -- one list for root and for each subtree
     let argalts =
          [
-           (devIndex r, [ArgInfo i us (c, devLabel r) (devFeats r) e | AbsTreeInfo { atiAbsTree = e, atiCat = c, atiUDIds = us} <- devAbsTrees r])
+           (assertIntIndex $ devIndex r, [ArgInfo i us (c, devLabel r) (devFeats r) e | AbsTreeInfo { atiAbsTree = e, atiCat = c, atiUDIds = us} <- devAbsTrees r])
          |
          -- number the arguments: root node 0, subtrees 1,2,..
          (i,r) <- (0,dn{devLabel = head_Label}) : zip [1..] (map root ts)
@@ -555,7 +569,7 @@ combineTrees env =
     ]
 
   -- NOTE: argss is transposed compared to tryFindArgs
-  tryFindArgsFast :: CId -> LabelledType -> [(UDId, [ArgInfo])] -> [(AbsTree,[UDId])]
+  tryFindArgsFast :: CId -> LabelledType -> [(UDIntId, [ArgInfo])] -> [(AbsTree,EnumSet UDIntId)]
   tryFindArgsFast  f (_, catlabs) (headArgs:argss) =
     [ (abstree,usage)
     | let catlabHeads = filter (\(cat,(lab,feats)) -> lab == head_Label) catlabs
@@ -565,18 +579,18 @@ combineTrees env =
       -- Select other args until done
     , headArg <- snd headArgs
     , singleArgTypeMatches catlabHead headArg
-    , let headUsage = argUsage headArg -- TODO Use Set or IntSet for argUsage
-    , let unusedArgs = filter ((`notElem` headUsage) . fst) argss -- Don't include arguments used by the head
+    , let headUsage = argUsage headArg
+    , let unusedArgs = filter ((`EnumSet.notMember` headUsage) . fst) argss -- Don't include arguments used by the head
     , dependentArgs <- findOtherArgs headArg headUsage catlabs unusedArgs
     , let allArgs = dependentArgs
     , let abstree = RTree f (map argTree allArgs)
-    , let usage = sort (concatMap argUsage allArgs) -- head usage + dependents' argument numbers
+    , let usage = foldMap argUsage allArgs -- head usage + dependents' argument numbers
 
     ]
   tryFindArgsFast  f (_, catlabs) [] = error "Avoidable partiality" -- TODO: Replace with e.g NonEmpty
 
   -- Find non-head arguments for a function
-  findOtherArgs :: ArgInfo -> [UDId] -> [(Cat,(Label,[UDData]))] -> [(UDId, [ArgInfo])] -> [[ArgInfo]]
+  findOtherArgs :: ArgInfo -> EnumSet UDIntId -> [(Cat,(Label,[UDData]))] -> [(UDIntId, [ArgInfo])] -> [[ArgInfo]]
   findOtherArgs _ usage [] argss = [[]]
   findOtherArgs headArg usage (catlab : catlabs) argss
     | fst (snd catlab) == head_Label = map (headArg :) $ findOtherArgs headArg usage catlabs argss
@@ -586,7 +600,7 @@ combineTrees env =
     , arg <- args                                 -- Select any alternative from it
     -- , all (`notElem` usage) $ argUsage arg        -- That doesn't overlap with already used args -- TODO Probably not needed, since
     , singleArgTypeMatches catlab arg             -- And matches the signature of the function   --      subtrees shouldn't overlap
-    , remaining <- findOtherArgs headArg (argUsage arg ++ usage) catlabs unusedArgs
+    , remaining <- findOtherArgs headArg (argUsage arg <> usage) catlabs unusedArgs
     ]
 
   singleArgTypeMatches :: (Cat,(Label,[UDData])) -> ArgInfo -> Bool
@@ -618,8 +632,8 @@ analyseWords env = mapRTree lemma2fun
  where
   morpho = morphology env
   lemma2fun dn = dn {
-    devAbsTrees = [AbsTreeInfo { atiAbsTree = t, atiCat = c, atiUDIds = [devIndex dn]} | (t,c) <- justWords],
-    devStatus = [devIndex dn],
+    devAbsTrees = [AbsTreeInfo { atiAbsTree = t, atiCat = c, atiUDIds = EnumSet.singleton $ assertIntIndex $ devIndex dn} | (t,c) <- justWords],
+    devStatus = EnumSet.singleton $ assertIntIndex $ devIndex dn,
     devIsUnknown = isUnknown
     }
    where
@@ -685,7 +699,7 @@ udtree2devtree = markClosest . initialize
 
   initialize tr@(RTree un uts) =
     RTree (DevNode {
-      devStatus = [],
+      devStatus = EnumSet.empty,
       devWord  = udFORM un,
       devAbsTrees = [],
       devLemma = udLEMMA un,
