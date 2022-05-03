@@ -334,7 +334,7 @@ pruneDevTree  tr@(RTree dn dts) = RTree dn{devAbsTrees = pruneCatGroups (groupCa
   rank = EnumSet.size . usage
   groupCat = map (sortOn ((100-) . rank)) . groupBy (\x y -> cat x == cat y) . sortOn cat
   prune usages grp = case grp of
-    t:ts | any (\u -> all (`EnumSet.member` u) (EnumSet.toList $ usage t)) usages -> prune usages ts
+    t:ts | any (usage t `EnumSet.isSubsetOf`) usages -> prune usages ts
     t:ts -> t : prune (usage t : usages) ts
     _ -> grp
   pruneCatGroups = concatMap (prune [])
