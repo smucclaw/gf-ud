@@ -504,7 +504,8 @@ combineTrees env =
   -- Apply all possible functions to the GF trees that were created in the previous iteration
   tryEvenMore :: [FunInfo] -> DevTree -> DevTree
   tryEvenMore [] tr = tr
-  tryEvenMore fis tr@RTree{root=nd} = tryEvenMore (newFuns (allFunsLocalFast onlyNewTree) nextTr) nextTr
+  tryEvenMore fis tr@RTree{root=nd} = tryEvenMore (allFunsLocalFast onlyNewTree) nextTr -- Deduplication just slows us down and is rarely relevant
+  -- tryEvenMore fis tr@RTree{root=nd} = tryEvenMore (newFuns (allFunsLocalFast onlyNewTree) nextTr) nextTr
     where
       -- The head only contains new trees that were created in the previous iteration
       onlyNewTree = tr {root = nd { devAbsTrees = map funInfoToAbsTreeInfo fis}}
@@ -549,6 +550,7 @@ combineTrees env =
 
     (f,labtyp) <- allFunsEnv env,
     (abstree,usage) <- tryFindArgsFast f labtyp argalts,
+    -- trace ("Built tree: " ++ prAbsTree abstree) $ abstree == abstree ,
     not $ isLooping abstree
     ]
 
@@ -582,7 +584,7 @@ combineTrees env =
     [ arg : remaining
     | ((argNr, args), unusedArgs) <- select argss -- Pick any subtree
     , arg <- args                                 -- Select any alternative from it
-    , all (`notElem` usage) $ argUsage arg        -- That doesn't overlap with already used args -- TODO Probably not needed, since
+    -- , all (`notElem` usage) $ argUsage arg        -- That doesn't overlap with already used args -- TODO Probably not needed, since
     , singleArgTypeMatches catlab arg             -- And matches the signature of the function   --      subtrees shouldn't overlap
     , remaining <- findOtherArgs headArg (argUsage arg ++ usage) catlabs unusedArgs
     ]
