@@ -523,7 +523,8 @@ combineTrees env =
   -- tryEvenMore fis tr@RTree{root=nd} = tryEvenMore (newFuns (allFunsLocalFast onlyNewTree) nextTr) nextTr
     where
       -- The head only contains new trees that were created in the previous iteration
-      onlyNewTree = tr {root = nd { devAbsTrees = map funInfoToAbsTreeInfo fis}}
+      onlyNewTreeRaw = tr {root = nd { devAbsTrees = map funInfoToAbsTreeInfo fis}}
+      onlyNewTree = pruneDevTree $ rankDevTree onlyNewTreeRaw -- Prune each set of new trees, so we don't iterate through them in the next iteration
       -- Add the new trees to the old ones. There shouldn't really be any duplicates now, so there's
       -- a bit of redundant checking going on here.
       nextTr = combineUnduplicated fis tr
