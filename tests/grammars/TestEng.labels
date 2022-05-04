@@ -58,6 +58,7 @@
 #auxcat Neg PART
 
 #disable UseAP QuestCl UseCl
+#disable UseNP
 
 #altfun ComplV2 head obl
 
@@ -94,3 +95,4 @@
 #auxfun AdjCN_acl ap cn : AP -> CN -> CN = AdjCN ap cn ; acl head
 
 #auxfun ParensAcl_ acl lp rp : Acl -> Adv -> Adv -> Acl = acl ; head punct[LEMMA=\(] punct[LEMMA=\)]
+#auxfun DetUDS_ det uds : Det -> UDS -> UDS = uds ; det head

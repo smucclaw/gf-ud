@@ -42,11 +42,12 @@ main = do
     describe "Preserve order of children" $ do
       it "should prefer to start with the first children if there's a choice" $ do
         bestTree env policy_acl_nmod `shouldBe` "root_acl_nmod (UseN policy_N) (PastPartAP (ComplV2 call_V2 P_NP)) (nmod_ of_Prep (DetCN the_Det (UseN company_N)))"
+      it "should prefer to start with the first children if there's a choice (part 2)" $ do
         bestTree env policy_nmod_acl `shouldBe` "root_nmod_acl (UseN policy_N) (nmod_ of_Prep (DetCN the_Det (UseN company_N))) (PastPartAP (ComplV2 call_V2 P_NP))"
 
-      -- portion of building separated by walls
-      it "should handle two post-modifiers" $ do
-        bestTree env portionOfBuildingSeparatedByWalls `shouldBe`  "AdjCN (PastPartAgentAP separate_V2 (DetCN aPl_Det (UseN wall_N))) (AdvCN (UseN portion_N) (PrepNP of_Prep (MassNP (UseN building_N))))"
+      -- -- portion of building separated by walls
+      -- it "should handle two post-modifiers" $ do
+      --   bestTree env portionOfBuildingSeparatedByWalls `shouldBe`  "AdjCN (PastPartAgentAP separate_V2 (DetCN aPl_Det (UseN wall_N))) (AdvCN (UseN portion_N) (PrepNP of_Prep (MassNP (UseN building_N))))"
       it "should handle pre- and post-modifier" $ do
         bestTree env largePortionOfWalls `shouldBe` "AdjCN (PositA large_A) (AdvCN (UseN portion_N) (PrepNP of_Prep (DetCN aPl_Det (UseN wall_N))))"
 
