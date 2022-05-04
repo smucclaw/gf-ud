@@ -652,7 +652,10 @@ analyseWords env = mapRTree lemma2fun
                    `ifEmpty` [(newWordTree w ec, ec) | c <- cs, let ec = either id id c])
     Just fs -> (False,fs)
     where
-      alternatives = [concatMap (parseWord w) cs, concatMap (parseWord (map toLower w)) cs, morphoFallback wf]
+      alternatives = [ concatMap (parseWord w) cs
+                    --  , concatMap (parseWord (map toLower w)) cs
+                     , let lowerWord = map toLower w in if lowerWord == w then [] else concatMap (parseWord lowerWord) cs
+                     , morphoFallback wf]
       isAllCaps = all isUpper
       isSame str1 str2 = map toLower str1 == map toLower str2
       wfLiteral = if isAllCaps wf && isSame w wf then wf else w
