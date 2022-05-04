@@ -28,6 +28,7 @@ import Data.Function (on)
 import Data.Ord (comparing)
 import qualified Data.Set as Set
 import Debug.Trace (trace, traceM, traceShowId)
+import System.IO (hFlush, stdout)
 
 ---------
 -- to debug
@@ -140,6 +141,7 @@ showUD2GF opts env sentence = do
        typecorrectSentences = min 1 (length ts)  -- 1 if type-correct, 0 if not
        }
 
+  hFlush stdout
   return (ts,stat)
 
 data UD2GFStat = UD2GFStat {
