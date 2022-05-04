@@ -42,9 +42,9 @@ main = do
 
       -- portion of building separated by walls
       it "should handle two post-modifiers" $ do
-        bestTree env portionOfBuildingSeparatedByWalls `shouldBe` "AdjCN (AdvCN portion of_building) separated_by_Adv (UseN wall_N)"
+        bestTree env portionOfBuildingSeparatedByWalls `shouldBe`  "AdjCN (PastPartAgentAP separate_V2 (DetCN aPl_Det (UseN wall_N))) (AdvCN (UseN portion_N) (PrepNP of_Prep (MassNP (UseN building_N))))"
       it "should handle pre- and post-modifier" $ do
-        bestTree env largePortionOfWalls `shouldBe` "AdvCN (AdjCN large portion) of_walls"
+        bestTree env largePortionOfWalls `shouldBe` "AdjCN (PositA large_A) (AdvCN (UseN portion_N) (PrepNP of_Prep (DetCN aPl_Det (UseN wall_N))))"
 
     describe "Match on DISTANCE" $ do
       it "should handle 'DISTANCE' as keyword, CG-style" $ do
