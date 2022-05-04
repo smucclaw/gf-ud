@@ -322,8 +322,9 @@ prtStatus udids =  "[" ++ intercalate "," (map (prt. udIntId2UdId) $ EnumSet.toL
 rankDevTree :: DevTree -> DevTree
 rankDevTree tr@(RTree dn dts) = RTree dn{devAbsTrees = rankSort (devAbsTrees dn)} dts
  where
-  rankSort = sortOn ((100-) . rank) -- descending order of rank
-  rank AbsTreeInfo { atiUDIds = us } = EnumSet.size us
+  rankSort = sortOn rank -- descending order of number of subtrees used, then ascending order on which specific subtrees
+                         -- This prioritises the trees that are more complete, and then the trees that are uses earlier subtrees first
+  rank AbsTreeInfo { atiUDIds = us } = (- EnumSet.size us, us)
 
 -- omit (t2,(cat,usage2)) if there is (t1,(cat,usage1)) such that usage2 is a subset of usage1
 pruneDevTree :: DevTree -> DevTree
