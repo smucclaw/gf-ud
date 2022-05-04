@@ -1,6 +1,6 @@
 #fun AdjCN	amod head
 #fun AdvVP 	head advmod
-#fun AdvCN 	head nmod
+#fun AdvCN 	head advmod
 #fun ComplV2	head obj
 #fun CoordS	cc head conj
 #fun DetCN	det head
@@ -16,8 +16,10 @@
 #fun root_nsubj head nsubj
 #fun root_nsubj_obl head nsubj advmod
 #fun nmod_ case head
-#fun root_acl_nmod head acl nmod
-#fun root_nmod_acl head nmod acl
+--#fun root_acl_nmod head acl nmod
+--#fun root_nmod_acl head nmod acl
+#fun AclCN head acl ;
+#fun NmodCN head nmod ;
 
 #cat A	      ADJ
 #cat Adv      ADV

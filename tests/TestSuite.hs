@@ -41,18 +41,19 @@ main = do
         labelAndMorpho "head[LEMMA=\\,]" `shouldBe` ("head", [UDData "LEMMA" [","]])
     describe "Preserve order of children" $ do
       it "should prefer to start with the first children if there's a choice" $ do
-        bestTree env policy_acl_nmod `shouldBe` "root_acl_nmod (UseN policy_N) (PastPartAP (ComplV2 call_V2 P_NP)) (nmod_ of_Prep (DetCN the_Det (UseN company_N)))"
-      it "should prefer to start with the first children if there's a choice (part 2)" $ do
-        bestTree env policy_nmod_acl `shouldBe` "root_nmod_acl (UseN policy_N) (nmod_ of_Prep (DetCN the_Det (UseN company_N))) (PastPartAP (ComplV2 call_V2 P_NP))"
+        bestTree env policy_acl_nmod `shouldBe` "DetCN anySg_Det (NmodCN (AclCN (UseN policy_N) (PastPartAP (ComplV2 call_V2 P_NP))) (nmod_ of_Prep (DetCN the_Det (UseN company_N))))"
 
-      -- -- portion of building separated by walls
-      -- it "should handle two post-modifiers" $ do
-      --   bestTree env portionOfBuildingSeparatedByWalls `shouldBe`  "AdjCN (PastPartAgentAP separate_V2 (DetCN aPl_Det (UseN wall_N))) (AdvCN (UseN portion_N) (PrepNP of_Prep (MassNP (UseN building_N))))"
+      it "should prefer to start with the first children if there's a choice (part 2)" $ do
+        bestTree env policy_nmod_acl `shouldBe` "DetCN anySg_Det (AclCN (NmodCN (UseN policy_N) (nmod_ of_Prep (DetCN the_Det (UseN company_N)))) (PastPartAP (ComplV2 call_V2 P_NP)))"
+
+      -- portion of building separated by walls
+      it "should handle two post-modifiers" $ do
+        bestTree env portionOfBuildingSeparatedByWalls `shouldBe` "DetCN each_Det (AdjCN (PastPartAgentAP separate_V2 (DetCN aPl_Det (UseN wall_N))) (AdvCN (UseN portion_N) (PrepNP of_Prep (DetCN a_Det (UseN building_N)))))"
       it "should handle pre- and post-modifier" $ do
-        bestTree env largePortionOfWalls `shouldBe` "AdjCN (PositA large_A) (AdvCN (UseN portion_N) (PrepNP of_Prep (DetCN aPl_Det (UseN wall_N))))"
+        bestTree env largePortionOfWalls `shouldBe` "AdjCN (PositA large_A) (NmodCN (UseN portion_N) (nmod_ of_Prep (DetCN aPl_Det (UseN wall_N))))"
 
     describe "Match on DISTANCE" $ do
-      it "should handle 'DISTANCE' as keyword, CG-style" $ do
+      xit "should handle 'DISTANCE' as keyword, CG-style" $ do
         bestTrees env tenHovercrafts `shouldBe`
           ["ApposNum (UseN hovercraft_N) ten_Num"
           ,"DetCN (num2Det ten_Num) (UseN hovercraft_N)"]

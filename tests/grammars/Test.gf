@@ -45,7 +45,8 @@ abstract Test = MiniLang - [PredVP] ** {
     fun company_N : N ;
     fun root_acl_nmod : (policy : CN) -> (called_X : Acl) -> (of_company : Nmod) -> UDS ;
     fun root_nmod_acl : (policy : CN) -> (of_company : Nmod) -> (called_X : Acl) -> UDS ;
-
+    fun AclCN : CN -> Acl -> CN ;
+    fun NmodCN : CN -> Nmod -> CN ;
 
 
 }

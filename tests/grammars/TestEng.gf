@@ -65,6 +65,11 @@ concrete TestEng of Test = MiniLangEng - [PredVP] ** open (R=MiniResEng), MiniPa
           let cn : CN = AdvCN (AdvCN policy of_company) called_P ;
            in UttNP (MassNP cn) ;
 
+    -- : CN -> Acl -> CN ;
+    lin AclCN = AdvCN ;
+
+    -- : CN -> Nmod -> CN ;
+    lin NmodCN = AdvCN ;
 
 
 }
