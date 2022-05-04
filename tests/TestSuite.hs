@@ -20,6 +20,8 @@ main = do
   tenHovercrafts <- readFile "tests/grammars/test_distance.conllu"
   portionOfBuildingSeparatedByWalls <- readFile "tests/examples/portion_of_building_separated_by_walls.conllu"
   largePortionOfWalls <- readFile "tests/examples/large_portion_of_walls.conllu"
+  policy_acl_nmod <- readFile "tests/examples/policy_called_P_of_the_company.conllu"
+  policy_nmod_acl <- readFile "tests/examples/policy_of_the_company_called_P.conllu"
   hspec $ do
     describe "Prefer flat trees" $ do
       it "should pick the flatter tree of the two alternatives" $ do
@@ -38,7 +40,9 @@ main = do
       it "should allow an escaped comma as a UD tag" $ do
         labelAndMorpho "head[LEMMA=\\,]" `shouldBe` ("head", [UDData "LEMMA" [","]])
     describe "Preserve order of children" $ do
-      -- it "should prefer to start with the first children if there's a choice" $ do
+      it "should prefer to start with the first children if there's a choice" $ do
+        bestTree env policy_acl_nmod `shouldBe` "root_acl_nmod (UseN policy_N) (PastPartAP (ComplV2 call_V2 P_NP)) (nmod_ of_Prep (DetCN the_Det (UseN company_N)))"
+        bestTree env policy_nmod_acl `shouldBe` "root_nmod_acl (UseN policy_N) (nmod_ of_Prep (DetCN the_Det (UseN company_N))) (PastPartAP (ComplV2 call_V2 P_NP))"
 
       -- portion of building separated by walls
       it "should handle two post-modifiers" $ do

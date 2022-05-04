@@ -29,6 +29,23 @@ abstract Test = MiniLang - [PredVP] ** {
     fun portion_N : N ;
     fun building_N : N ;
     fun large_A : A ;
+    fun each_Det : Det ;
+
+    -- The above seems to work correctly without changes, so need more complex example
+    cat Acl ;
+    cat Nmod ;
+    -- very ad hoc
+    fun PastPartAP : VP -> Acl ;
+    fun nmod_ : Prep -> NP -> Nmod ;
+
+    -- lexicon for test case
+    fun call_V2 : V2 ;
+    fun P_NP : NP ;
+    fun policy_N : N ;
+    fun company_N : N ;
+    fun root_acl_nmod : (policy : CN) -> (called_X : Acl) -> (of_company : Nmod) -> UDS ;
+    fun root_nmod_acl : (policy : CN) -> (of_company : Nmod) -> (called_X : Acl) -> UDS ;
+
 
 
 }

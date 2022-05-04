@@ -15,6 +15,9 @@
 #fun ApposNum head nummod
 #fun root_nsubj head nsubj
 #fun root_nsubj_obl head nsubj advmod
+#fun nmod_ case head
+#fun root_acl_nmod head acl nmod
+#fun root_nmod_acl head nmod acl
 
 #cat A	      ADJ
 #cat Adv      ADV

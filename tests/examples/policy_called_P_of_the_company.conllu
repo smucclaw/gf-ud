@@ -1,0 +1,13 @@
+# newdoc
+# newpar
+# sent_id = 1
+# text = the policy (called P) of the company
+1	the	the	DET	DT	Definite=Def|PronType=Art	2	det	_	_
+2	policy	policy	NOUN	NN	Number=Sing	0	root	_	_
+3	(	(	PUNCT	-LRB-	_	4	punct	_	SpaceAfter=No
+4	called	call	VERB	VBN	Tense=Past|VerbForm=Part	2	acl	_	_
+5	P	p	NOUN	NN	Number=Sing	4	obj	_	SpaceAfter=No
+6	)	)	PUNCT	-RRB-	_	4	punct	_	_
+7	of	of	ADP	IN	_	9	case	_	_
+8	the	the	DET	DT	Definite=Def|PronType=Art	9	det	_	_
+9	company	company	NOUN	NN	Number=Sing	2	nmod	_	SpacesAfter=\n
