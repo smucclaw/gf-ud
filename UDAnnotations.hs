@@ -6,6 +6,7 @@ import RTree
 import UDConcepts
 
 import Data.Char
+import Data.Compact (compact, getCompact)
 import Data.List
 import qualified Data.Map as M
 import Data.Maybe
@@ -42,7 +43,8 @@ getEnv pref eng cat = do
   cnclabels <- readFile (stdCncLabelsFile pref eng) >>= return . pCncLabels
   let actlang = stdLanguage pref eng
   let env = mkUDEnv pgf abslabels cnclabels actlang cat
-  return $ addMissing env
+  let withMissing = addMissing env
+  getCompact <$> compact withMissing
 
 getAnnotEnv :: [FilePath] -> IO UDEnv
 getAnnotEnv files@(file:fs) = do
@@ -153,7 +155,8 @@ pAbsLabels :: String -> AbsLabels
 pAbsLabels = dispatch . map words . uncomment . lines
  where
   dispatch = foldr add initAbsLabels
-  add ws labs = traceShowId $ case ws of
+  -- add ws labs = traceShowId $ case ws of
+  add ws labs = case ws of
     "#guidelines":w:_   -> labs{annotGuideline = Just w} --- overwrites earlier declaration
     "#fun":f:xs | elem ">" xs -> labs{funLabels = insertFunLabels (mkCId f) (map getMaybeFun fs, ls) (funLabels labs)} where (fs,_:ls) = break (==">") xs
     "#fun":f:xs         -> labs{funLabels = insertFunLabels (mkCId f) (unzip (map pFunLabel xs)) (funLabels labs)}
