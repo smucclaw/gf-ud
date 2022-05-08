@@ -1,24 +1,24 @@
 module Main where
 
-import qualified UD2GF as U 
-import qualified GF2UD as G
 import qualified DBNF as D
-import UDAnnotations
-import UDOptions
-import UDConcepts
+import qualified GF2UD as G
 import GFConcepts (pAbsTree)
-import UDVisualization
-import UDAnalysis
-import UDPatterns
 import RTree
+import qualified UD2GF as U
+import UDAnalysis
+import UDAnnotations
+import UDConcepts
+import UDOptions
+import UDPatterns
+import UDVisualization
 
 import PGF
 
-import System.Environment (getArgs)
 import Control.Concurrent
 import Control.Monad
-import Data.List(sortOn, (\\))
-import Data.Char(isDigit)
+import Data.Char (isDigit)
+import Data.List (sortOn, (\\))
+import System.Environment (getArgs)
 
 -- to get parallel processing:
 -- Build with -threaded -rtsopts
@@ -31,13 +31,13 @@ main = do
     "dbnf":grammarfile:startcat:opts -> D.processRuleBased grammarfile startcat opts
 
     "conll2latex":_ -> getContents >>= putStrLn . ud2latex . parseUDText
-  
+
     "conll2pdf":_ -> getContents >>= visualizeUDSentences . parseUDText
-  
+
     "check-treebank":_ -> getContents >>= putStrLn . checkUDSentences . parseUDText
 
     "check-annotations":path:lang:cat:_ -> checkAnnotations path lang cat
-    
+
     "statistics":opts -> getContents >>= mapM_ print . udFrequencies (selectOpts opts) . parseUDText
 
     "pattern-match":ws0 -> do
@@ -45,25 +45,25 @@ main = do
        let sopts = selectOpts opts
        patterntext <- case ws of
          "-f":file:_ -> readFile file
-         _ -> return $ unwords ws
+         _           -> return $ unwords ws
        let pattern = (read patterntext) :: UDPattern
        ss <- getContents >>= return . parseUDText
        mapM_ putStrLn $ filter (not . null) $ map (showMatchesInUDSentence sopts pattern) ss
-    
+
     "pattern-replace":ws -> do
        patterntext <- case ws of
          "-f":file:_ -> readFile file
-         _ -> return $ unwords ws
+         _           -> return $ unwords ws
        let pattern = (read patterntext) :: UDReplacement
        putStrLn $ "## " ++ show pattern
        ss <- getContents >>= return . parseUDText
        mapM_ putStrLn $ map (showReplacementsInUDSentence pattern) ss
-    
+
     "cosine-similarity":file1:file2:opts -> do
       ud1 <- parseUDFile file1
       ud2 <- parseUDFile file2
       print $ udCosineSimilarity (selectOpts opts) ud1 ud2
-  
+
     "cosine-similarity-sort":file1:file2:fopts -> do
       ud1 <- parseUDFile file1
       ud2 <- parseUDFile file2
@@ -79,14 +79,14 @@ main = do
       let sortedResults = sortOn ((0-) . snd) (filter ((>= limit) . snd) results)
       flip mapM_ sortedResults $ \ (ud,sim) -> do
         putStrLn $ prt $ ud{udCommentLines = ("# similarity " ++ show sim) : udCommentLines ud}
-  
+
     "not-covered":file1:file2:opts -> do
       ud1 <- parseUDFile file1
       ud2 <- parseUDFile file2
       putStrLn $ unwords $ map show $ notCoveredFeatures (selectOpts opts) ud1 ud2
-  
+
     "parse2latex":file:_ -> getContents >>= absTrees2latex initUDEnv file . map pAbsTree . selectParseTrees . lines
-    
+
     "parse2pdf":_ -> getContents >>= visualizeAbsTrees initUDEnv . map pAbsTree . selectParseTrees . lines
 
     "conll2tree":_ -> getContents >>= mapM_ putStrLn . map (prUDTree . udSentence2tree) . parseUDText
@@ -95,7 +95,7 @@ main = do
     "conll2reduced":patt:_ -> getContents >>= mapM_ putStrLn . map (prReducedUDSentence patt) . parseUDText
     "reduced2conll":patt:_ -> getContents >>= mapM_ (putStrLn . prt) . map (pReducedUDSentence patt) . stanzas . lines
     "oneliner2conll":patt:_ -> getContents >>= mapM_ (putStrLn . prt) . map (pOneLineUDSentence patt) . lines
-    
+
     "extract-pos-words":_ -> getContents >>= putStrLn . unlines . map ud2poswords . parseUDText
     "extract-pos-feats-words":_ -> getContents >>= putStrLn . unlines . map ud2posfeatswords . parseUDText
 
@@ -106,20 +106,20 @@ main = do
     "immediate-subtrees":_ -> getContents >>= mapM_ (putStrLn . prt . udTree2sentence . adjustRootAndPositions) . concatMap (subtrees . udSentence2tree) . parseUDText
 
     "extract-dbnf":n:_ -> getContents >>= putStrLn . extractDBNF (read n)
-    
+
     "calibrate-dbnf":tbfile:_ -> do
       tb  <- parseUDFile tbfile
       dbnf <- getContents >>= return . D.pGrammar
       let cdbnf = calibrateDBNF tb dbnf
       putStrLn $ D.prGrammar cdbnf
 
-    
+
     "lexical-entries":annots:_ -> do
        env <- getAnnotEnv [annots]
        uds <- getContents >>= return . parseUDText
        let entries = lexicalEntries env uds
        putStrLn $ unlines [unwords [w ++ "_" ++ c, "--", show (reverse i)] | ((w,c),i) <- entries]
-       
+
     "lexical-entries-gf":annots:pgf:_ -> do
        env <- getAnnotEnv [annots,pgf]
        uds <- getContents >>= return . parseUDText
@@ -127,12 +127,12 @@ main = do
        putStrLn $ unlines entries
 
     "eval":micmac:luas:goldf:testf:opts -> do
-    
+
       putStrLn (unwords ("evaluating": tail xx))
-      
+
       let mcro = case micmac of "macro" -> False ; "micro" -> True ; _ -> error ("expected micro|macro, got " ++ micmac)
       let crit = case luas of "LAS" -> agreeLAS ; "UAS" -> agreeUAS ; _ -> error ("expected LAS|UAS, got " ++ luas)
-      
+
       gold <- parseUDFile goldf
       test <- parseUDFile testf
 
@@ -143,11 +143,11 @@ main = do
           flip mapM_ scores $ \ (score,(go,te)) -> do
             print score
             putStrLn $ prUDAlign go te
-          
+
         _ -> do
           let score = udCorpusScore mcro crit gold test
           print score
-      
+
     dir:path:lang:cat:opts | elem (dropWhile (=='-') dir) ["ud2gf","gf2ud","ud2gfparallel","string2gf2ud"] -> do
       env <- getEnv path lang cat
       convertGFUD (dropWhile (=='-') dir) (selectOpts opts) env
@@ -225,32 +225,35 @@ helpMsg = unlines $ [
     ] ++ ["  " ++ opt ++ "\t" ++ msg | (opt,msg) <- fullOpts]
 
 convertGFUD :: String -> Opts -> UDEnv -> IO ()
-convertGFUD dir opts env = 
+convertGFUD dir opts env =
   let optsU2G = if null (opts \\ nonPrintingOpts) then opts ++ defaultOptsUD2GF else opts
+      getInput = case lookup "file" opts of
+                    Just (f,_) -> readFile f
+                    Nothing    -> getContents
   in case dir of
-    "ud2gf" -> getContents >>= ud2gfOpts optsU2G env
-    "ud2gfparallel" -> getContents >>= ud2gfOptsPar optsU2G env
+    "ud2gf" -> getInput >>= ud2gfOpts optsU2G env
+    "ud2gfparallel" -> getInput >>= ud2gfOptsPar optsU2G env
     _ -> do
-      s <- getContents
+      s <- getInput
       let conv = case dir of
-            "gf2ud" -> G.testTreeString
+            "gf2ud"        -> G.testTreeString
             "string2gf2ud" -> G.testString
       let os = if null opts then defaultOptsGF2UD else opts
       uds <- mapM (\ (i,s) -> conv i os env s) $ zip [1..] . filter (not . null) $ lines s
       case opts of
         _ | isOpt opts "lud" -> putStrLn $ ud2latex uds
         _ | isOpt opts "vud" -> visualizeUDSentences uds
-        _ -> return ()
-   
+        _                    -> return ()
+
 
 ud2gf :: UDEnv -> String -> IO ()
-ud2gf = ud2gfOpts defaultOptsUD2GF 
+ud2gf = ud2gfOpts defaultOptsUD2GF
 
 ud2gfOpts :: Opts -> UDEnv -> String -> IO ()
 ud2gfOpts opts env = U.test opts env
 
 gf2ud :: UDEnv -> String -> IO ()
-gf2ud = gf2udOpts defaultOptsGF2UD 
+gf2ud = gf2udOpts defaultOptsGF2UD
 
 gf2udOpts :: Opts -> UDEnv -> String -> IO ()
 gf2udOpts opts env s = G.testString 1 opts env s >> return ()
@@ -277,13 +280,13 @@ termcat = "Term"
 
 checkUDSentences :: [UDSentence] -> String
 checkUDSentences uds = case errorsInUDSentences uds of
-  [] -> "# treebank OK"
+  []   -> "# treebank OK"
   msgs -> unlines msgs
 
 
 sampleFromList n xs = take n [x | (x,i) <- zip xs [1..], mod i r == 0]
   where
-    r = max 1 (div (length xs) n) 
+    r = max 1 (div (length xs) n)
 
 takeLast n xs = drop (length xs - n) xs
 
