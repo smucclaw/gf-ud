@@ -698,6 +698,7 @@ The same applies for compound adjectives, verbs etc. This assumes that the gramm
 
   --- this can fail if c is discontinuous, or return false positives if w is a form of another word
   parseWord w ec = case ec of
+    -- Left c -> case trace ("p -cat=" ++ showCId c ++ " " ++ show w) $ parse (pgfGrammar env) (actLanguage env) (mkType [] c []) w of
     Left c -> case parse (pgfGrammar env) (actLanguage env) (mkType [] c []) w of
       ts -> [(at,c) | t <- ts,
                       let at = expr2abstree t,
