@@ -42,15 +42,16 @@ traceNoPrint _ _ x = x
 -- env <- getEnv
 
 
-getExprs :: [String] -> UDEnv -> String -> [[Expr]]
+getExprs :: [String] -> UDEnv -> String -> [[Either String Expr]]
 getExprs rawOpts env string = map getExpr sentences
   where
     eng = actLanguage env
+    pgf = pgfGrammar env
     opts = selectOpts rawOpts
     sentences = map prss $ stanzas $ lines string -- the input string has many sentences
 
     -- This fun is just showUD2GF without the printing.
-    getExpr :: UDSentence -> [Expr]
+    getExpr :: UDSentence -> [Either String Expr]
     getExpr sentence = ts
       where
         udtree = udSentence2tree sentence
@@ -60,9 +61,12 @@ getExprs rawOpts env string = map getExpr sentences
         besttree0 = head (splitDevTree env devtree)
         besttree = addBackups opts besttree0
         ts0 = devtree2abstrees besttree
-        ts1 = map (expandMacro env) ts0
-        crs = map (checkAbsTreeResult env) ts1
-        ts = mapMaybe resultTree crs
+        ts1 = map (abstree2expr . expandMacro env) ts0
+        ts = [ either (Left . (++ "\nOriginal expression: " ++ showExpr [] t) . render . ppTcError)
+                      (Right . fst)
+                      (inferExpr pgf t)
+             | t <- ts1 ]
+
 test opts env string = do
   let eng = actLanguage env
   let sentences = map prss $ stanzas $ lines string
