@@ -387,7 +387,7 @@ debugAuxFun' env dt funId argIds = either ("Error: " ++) id $ do
   let showAttrs [] = ""
       showAttrs xs = "[" ++ intercalate "," (map prt xs) ++ "]"
   let showFun outCat argCatLabs = show funId ++ " : " ++ intercalate " -> " (map (show . fst) argCatLabs) ++ " -> " ++ show outCat ++ " ; "
-       ++ unwords ([ lab ++ showAttrs b | (_,(lab,b)) <- argCatLabs])
+       ++ unwords ([ prLM lab ++ showAttrs b | (_,(lab,b)) <- argCatLabs])
 
   -- Find the function definition
   -- TODO: Merge this with the arg handling below
@@ -402,8 +402,8 @@ debugAuxFun' env dt funId argIds = either ("Error: " ++) id $ do
          ++ showTheFun
 
   let catLabNrs = zip argNrs argCatLabs
-  let catlabHeads = filter (\(nr,(cat,(lab,feats))) -> lab == head_Label) catLabNrs
-  (headNr, catlabHead) <- case catlabHeads of [ch] -> pure ch; _ -> Left ("Missing head label for function: " ++ show f ++ "\nlabels: " ++ unwords (map (fst . snd) argCatLabs))
+  let catlabHeads = filter (\(nr,(cat,(lab,feats))) -> lab == Exact head_Label) catLabNrs
+  (headNr, catlabHead) <- case catlabHeads of [ch] -> pure ch; _ -> Left ("Missing head label for function: " ++ show f ++ "\nlabels: " ++ unwords (map (prLM .fst . snd) argCatLabs))
 
   -- Step 1. find where the head is in the tree
   headTree <- case findNode env (UDIdInt headNr) dt of
@@ -436,9 +436,9 @@ debugAuxFun' env dt funId argIds = either ("Error: " ++) id $ do
   -- traceM $ "Found head trees with correct category: " ++ intercalate "\n" (map (prRTree showCId . atiAbsTree) goodTrees)
 
   -- 4. Check that the arguments are compatible with the function
-  let badLabels = [(node, lab) | (node, (cat,(lab,feats))) <- argNodes, devLabel node /= lab]
+  let badLabels = [(node, lab) | (node, (cat,(lab,feats))) <- argNodes, not $ devLabel node `labMatches` lab]
   unless (null badLabels) $ Left $ ("Incompatible argument labels:\n" ++) $
-    intercalate "\n" [ " - For " ++ show (devWord node) ++ ": Got " ++ devLabel node ++ " expected " ++ lab | (node,lab) <- badLabels]
+    intercalate "\n" [ " - For " ++ show (devWord node) ++ ": Got " ++ devLabel node ++ " expected " ++ prLM lab | (node,lab) <- badLabels]
   let badAttrs = [(node, missingFeats) | (node, (cat,(lab,feats))) <- argNodes, let missingFeats = filter (`notElem`devFeats node) feats, not (null missingFeats)]
   unless (null badAttrs) $ Left $ ("Missing argument features:\n" ++) $
     intercalate "\n" [ " - For " ++ show (devWord node) ++ ": Missing features " ++ showAttrs feats ++ " from " ++ showAttrs (devFeats node) | (node,feats) <- badAttrs]
@@ -446,7 +446,7 @@ debugAuxFun' env dt funId argIds = either ("Error: " ++) id $ do
   -- Check the category of the arguments
   -- TODO: Be less confusing when the node is deeply nested because of pruning
   forM_ argNodes $ \(node,(cat,(lab,feats))) -> do
-    traceM $ "\nArgument " ++ show (devWord node) ++ " : " ++ showCId cat ++ " ; " ++ lab ++ showAttrs feats ++ ":"
+    traceM $ "\nArgument " ++ show (devWord node) ++ " : " ++ showCId cat ++ " ; " ++ prLM lab ++ showAttrs feats ++ ":"
     let nodeAT = devAbsTrees node
     let goodTrees = [ x | x <- nodeAT , atiCat x == cat]
     when (null goodTrees) $ Left $ "No trees with expected category for " ++ showCId f ++ " with arg \"" ++ devWord node ++ "\"\n"
@@ -576,8 +576,8 @@ combineTrees env =
   tryFindArgsFast :: CId -> LabelledType -> [(UDIntId, [ArgInfo])] -> [(AbsTree,EnumSet UDIntId)]
   tryFindArgsFast  f (_, catlabs) (headArgs:argss) =
     [ (abstree,usage)
-    | let catlabHeads = filter (\(cat,(lab,feats)) -> lab == head_Label) catlabs
-    , let catlabHead = case catlabHeads of [ch] -> ch; _ -> error ("Missing head label for function: " ++ show f ++ "\nlabels: " ++ unwords (map (fst . snd) catlabs))
+    | let catlabHeads = filter (\(cat,(lab,feats)) -> lab == Exact head_Label) catlabs
+    , let catlabHead = case catlabHeads of [ch] -> ch; _ -> error ("Missing head label for function: " ++ show f ++ "\nlabels: " ++ unwords (map (prLM . fst . snd) catlabs))
       -- Select a headArg matching labcatHead
       -- Filter out argss according to use from the headArg
       -- Select other args until done
@@ -594,10 +594,10 @@ combineTrees env =
   tryFindArgsFast  f (_, catlabs) [] = error "Avoidable partiality" -- TODO: Replace with e.g NonEmpty
 
   -- Find non-head arguments for a function
-  findOtherArgs :: ArgInfo -> EnumSet UDIntId -> [(Cat,(Label,[UDData]))] -> [(UDIntId, [ArgInfo])] -> [[ArgInfo]]
+  findOtherArgs :: ArgInfo -> EnumSet UDIntId -> [(Cat,(LabelMatch,[UDData]))] -> [(UDIntId, [ArgInfo])] -> [[ArgInfo]]
   findOtherArgs _ usage [] argss = [[]]
   findOtherArgs headArg usage (catlab : catlabs) argss
-    | fst (snd catlab) == head_Label = map (headArg :) $ findOtherArgs headArg usage catlabs argss
+    | fst (snd catlab) == Exact head_Label = map (headArg :) $ findOtherArgs headArg usage catlabs argss
   findOtherArgs headArg usage (catlab : catlabs) argss =
     [ arg : remaining
     | ((argNr, args), unusedArgs) <- select argss -- Pick any subtree
@@ -607,9 +607,11 @@ combineTrees env =
     , remaining <- findOtherArgs headArg (argUsage arg <> usage) catlabs unusedArgs
     ]
 
-  singleArgTypeMatches :: (Cat,(Label,[UDData])) -> ArgInfo -> Bool
+  singleArgTypeMatches :: (Cat,(LabelMatch,[UDData])) -> ArgInfo -> Bool
   singleArgTypeMatches catlab@(cat,(lab,feats)) arg =
-    argCatLab arg == (cat,lab) &&
+    let (acat,alab) = argCatLab arg in
+    acat == cat &&
+    (alab `labMatches` lab) &&
     all (`elem` argFeats arg) feats -- required features are found ---- TODO if feats or (argFeats arg) contain disjunctions
 
   funInfoToAbsTreeInfo :: FunInfo -> AbsTreeInfo
