@@ -105,7 +105,7 @@ data MacroFunction = MacroFunction
   { mfType      :: AbsType
   , mfArgNames  :: [CId]
   , mfExpansion :: AbsTree
-  , mfLabels    :: [(Label, [UDData])]
+  , mfLabels    :: [(LabelMatch, [UDData])]
   }
   deriving (Show)
 
@@ -273,7 +273,7 @@ uncomment = filter (not . all isSpace)  . map uncom
 --------------------------
 
 -- valcat, [argcat * label]
-type LabelledType = (Cat,[(Cat,(Label,[UDData]))])  -- UDData says that certain morpho parameters must be present
+type LabelledType = (Cat,[(Cat,(LabelMatch,[UDData]))])  -- UDData says that certain morpho parameters must be present
 
 mkLabelledType :: Type -> [String] -> LabelledType
 mkLabelledType typ labs = case unType typ of
@@ -282,10 +282,27 @@ mkLabelledType typ labs = case unType typ of
   valCat ty = case unType ty of
     (_,cat,_) -> cat
 
-labelAndMorpho :: String -> (Label,[UDData])
+-- | Support wildcards in labels
+data LabelMatch = Exact String | Prefix String
+ deriving (Show,Eq,Ord)
+
+prLM :: LabelMatch -> String
+prLM (Exact s)  = s
+prLM (Prefix s) = s ++ ":*"
+
+labMatches :: Label -> LabelMatch -> Bool
+labMatches l (Exact str)  = l == str
+labMatches l (Prefix str) = l == str || (str++":") `isPrefixOf` l
+
+labelAndMorpho :: String -> (LabelMatch,[UDData])
 labelAndMorpho s = case break (=='[') s of  -- obj[Num=Sing]
-    (l,_:m) -> (l, prs (init m))
-    _       -> (s,[])
+    (l,_:m) -> (pLabelMatch l, prs (init m))
+    _       -> (pLabelMatch s,[])
+
+pLabelMatch :: String -> LabelMatch
+pLabelMatch l = case break (== ':') l of
+    (l',":*") -> Prefix l'
+    _         -> Exact l
 
 isEndoType, isExoType :: LabelledType -> Bool
 isEndoType labtyp@(val,args) = elem val (map fst args)
