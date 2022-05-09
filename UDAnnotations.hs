@@ -43,9 +43,14 @@ getEnv pref eng cat = do
   cnclabels <- readFile (stdCncLabelsFile pref eng) >>= return . pCncLabels
   let actlang = stdLanguage pref eng
   let env = mkUDEnv pgf abslabels cnclabels actlang cat
-  let withMissing = addMissing env
-  getCompact <$> compact withMissing  -- Enable compact regions
-  -- pure withMissing                 -- Disable compact regions 
+  pure $ addMissing env
+
+-- | Put the environment in a compact region. This will slow down initial loading, but
+--   will reduce GC overhead for long running processes.
+getCompactEnv :: String -> String -> String -> IO UDEnv
+getCompactEnv pref eng cat = do
+  nonCompact <- getEnv pref eng cat
+  getCompact <$> compact nonCompact  -- Enable compact regions
 
 getAnnotEnv :: [FilePath] -> IO UDEnv
 getAnnotEnv files@(file:fs) = do

@@ -43,6 +43,7 @@ noOpts = []
 
 fullOpts = [
   ("file","'file=/path/to/file' Reads from the given file instead of stdin"),
+  ("optimize-for-long-process","Put the environment in a compact region. This will slow down initial loading, but will reduce GC overhead for long running processes."),
   ("msg","show message and not just the result"),
   ("ud", "UD tree in CoNLLU format"),
   ("err","validation errors in the UD tree"),

@@ -149,8 +149,11 @@ main = do
           print score
 
     dir:path:lang:cat:opts | elem (dropWhile (=='-') dir) ["ud2gf","gf2ud","ud2gfparallel","string2gf2ud"] -> do
-      env <- getEnv path lang cat
-      convertGFUD (dropWhile (=='-') dir) (selectOpts opts) env
+      let opts' = selectOpts opts
+      env <- if isOpt opts' "optimize-for-long-process"
+        then getCompactEnv path lang cat
+        else getEnv path lang cat
+      convertGFUD (dropWhile (=='-') dir) opts' env
     _ -> putStrLn $ helpMsg
 
 helpMsg = unlines $ [
