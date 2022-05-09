@@ -5,8 +5,18 @@ resolver: lts-18.28
 
 
 extra-deps:
-- git: https://github.com/GrammaticalFramework/gf-core
-  commit: 6414bc8923ddf24c65eed053d03244c054c86dcb
+# - git: https://github.com/GrammaticalFramework/gf-core
+#   commit: 6414bc8923ddf24c65eed053d03244c054c86dcb
+# My version:
+- github: anka-213/gf-core
+  # commit: 4ae29ba3a9b6b58ec13d7d939a1e64b785d3bb41 # No ShortByteString
+  # commit: 4b6ba957e4cb92a7f5c1ce5c8edc1e7fccc941fc # With ShortByteString
+  # commit: 97cfec29067de07a166d7b786cad60419b617a59 # Using string interning
+  # commit: 43202b31419f68bffb50320227cf01dadfa080e8 # Using ekmett's string interning
+  # commit: d8444440443b8113e8b98cc81f12b8b0bb910bf6 # With delayed TrieMap.map
+  commit: d902bb6c00c56230e74897d8d14e9e0c3a81178e   # More cost centres
+  # Use ShortByteString
+  # branch: random-performance-improvements
 - json-0.10@sha256:d9fc6b07ce92b8894825a17d2cf14799856767eb30c8bf55962baa579207d799,3210
 - alex-3.2.5@sha256:af0c4aac67849d8b35e8c16063517642a5c6b809d09fdb040ed9369f91cb26fb,4054
 - exceptions-0.10.4@sha256:1729ef26a611ae78aa58cdd34192aff710cbaa6d631dd042ddfb63556d00b52c,2796
@@ -15,6 +25,7 @@ extra-deps:
 - syb-0.7.1@sha256:8d37b1e4d04a9aa8512dc6c2a06e02afc015a2fd3e735bdfeeacb5e2e853323c,2462
 - utf8-string-1.0.1.1@sha256:68cc6cf665e7212334a51b63d6936daeaca023b2cfe8637d130acfe95f91700b,1151
 - split-0.2.3.4@sha256:048c75891d63a03828f97667214aaaf0e67b7dcbfec297753e39939ffda6f51a,2647
+- compact-0.2.0.0@sha256:75ef98cb51201b4a0d6de95cbbb62be6237c092a3d594737346c70c5d56c2380,2413
 
 # The following packages have been ignored due to incompatibility with the
 # resolver compiler, dependency conflicts with other packages

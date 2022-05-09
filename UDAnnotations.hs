@@ -6,10 +6,12 @@ import RTree
 import UDConcepts
 
 import Data.Char
+import Data.Compact (compact, getCompact)
 import Data.List
 import qualified Data.Map as M
 import Data.Maybe
 import qualified Data.Set as S
+import Debug.Trace (traceShowId)
 import System.FilePath.Posix (takeBaseName)
 
 data UDEnv = UDEnv {
@@ -41,7 +43,14 @@ getEnv pref eng cat = do
   cnclabels <- readFile (stdCncLabelsFile pref eng) >>= return . pCncLabels
   let actlang = stdLanguage pref eng
   let env = mkUDEnv pgf abslabels cnclabels actlang cat
-  return $ addMissing env
+  pure $ addMissing env
+
+-- | Put the environment in a compact region. This will slow down initial loading, but
+--   will reduce GC overhead for long running processes.
+getCompactEnv :: String -> String -> String -> IO UDEnv
+getCompactEnv pref eng cat = do
+  nonCompact <- getEnv pref eng cat
+  getCompact <$> compact nonCompact  -- Enable compact regions
 
 getAnnotEnv :: [FilePath] -> IO UDEnv
 getAnnotEnv files@(file:fs) = do
@@ -72,7 +81,7 @@ data AbsLabels = AbsLabels {
   annotGuideline :: Maybe String,
   funLabels      :: M.Map CId [([Maybe CId], [Label])],
   catLabels      :: M.Map CId (String,Bool) -- True marks primary category in ud2gf
-  }
+  } deriving (Show)
 
 initAbsLabels :: AbsLabels
 initAbsLabels = AbsLabels (Just "UD2") M.empty M.empty
@@ -152,6 +161,7 @@ pAbsLabels :: String -> AbsLabels
 pAbsLabels = dispatch . map words . uncomment . lines
  where
   dispatch = foldr add initAbsLabels
+  -- add ws labs = traceShowId $ case ws of
   add ws labs = case ws of
     "#guidelines":w:_   -> labs{annotGuideline = Just w} --- overwrites earlier declaration
     "#fun":f:xs | elem ">" xs -> labs{funLabels = insertFunLabels (mkCId f) (map getMaybeFun fs, ls) (funLabels labs)} where (fs,_:ls) = break (==">") xs

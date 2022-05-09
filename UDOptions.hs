@@ -14,10 +14,10 @@ defaultOptsGF2UD = selectOpts ["msg","gf","an3","ut","ud"]
 
 selectOpts :: [String] -> Opts
 -- selectOpts opts = [(o,("",s)) | (o,s) <- fullOpts, o `elem` opts]
-selectOpts opts = 
-  [(o,(arg,s)) 
+selectOpts opts =
+  [(o,(arg,s))
   | optArg <- opts
-  , let (o,arg') = break (=='=') optArg 
+  , let (o,arg') = break (=='=') optArg
   , let arg = drop 1 arg' -- Remove the '='
   , Just s <- [lookup o fullOpts]
   ]
@@ -42,6 +42,8 @@ isOpt opts o = o `elem` map fst opts
 noOpts = []
 
 fullOpts = [
+  ("file","'file=/path/to/file' Reads from the given file instead of stdin"),
+  ("optimize-for-long-process","Put the environment in a compact region. This will slow down initial loading, but will reduce GC overhead for long running processes."),
   ("msg","show message and not just the result"),
   ("ud", "UD tree in CoNLLU format"),
   ("err","validation errors in the UD tree"),
