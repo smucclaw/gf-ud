@@ -44,7 +44,8 @@ getEnv pref eng cat = do
   let actlang = stdLanguage pref eng
   let env = mkUDEnv pgf abslabels cnclabels actlang cat
   let withMissing = addMissing env
-  getCompact <$> compact withMissing
+  getCompact <$> compact withMissing  -- Enable compact regions
+  -- pure withMissing                 -- Disable compact regions 
 
 getAnnotEnv :: [FilePath] -> IO UDEnv
 getAnnotEnv files@(file:fs) = do
